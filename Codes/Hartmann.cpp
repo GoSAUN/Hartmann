@@ -10,6 +10,7 @@ const int Ny1 = Ny+1;
 const int Nz1 = Nz+1;
 const int L = Nx + 1;
 const int Q = 19;
+const int Qm = 7;
 const int dt = 1;
 
 const double rho0 = 1.0;
@@ -27,8 +28,14 @@ int cx[Q] = {0, 1,-1, 0, 0, 0, 0, 1,-1, 1,-1, 0, 0, 1,-1, 1,-1, 0, 0};
 int cy[Q] = {0, 0, 0, 1,-1, 0, 0, 1,-1, 0, 0, 1,-1,-1, 1, 0, 0, 1,-1};
 int cz[Q] = {0, 0, 0, 0, 0, 1,-1, 0, 0, 1,-1, 1,-1, 0, 0,-1, 1,-1, 1};
 
+int cmx[Qm] = {0, 1, 0,-1, 0, 0, 0};
+int cmy[Qm] = {0, 0, 0, 0, 0, 1,-1};
+int cmz[Qm] = {0, 0, 1, 0,-1, 0, 0};
+
 double f[Nx1][Ny1][Nz1][Q]; 
-double f_post[Nx1][Ny1][Nz1][Q]; 
+double f_post[Nx1][Ny1][Nz1][Q];
+double g[Nx1][Ny1][Nz1][Q]; 
+double g_post[Nx1][Ny1][Nz1][Q]; 
 double rho[Nx1][Ny1][Nz1];
 double ux[Nx1][Ny1][Nz1];
 double uy[Nx1][Ny1][Nz1];
@@ -49,23 +56,42 @@ double w[Q] = {1.0/3 ,1.0/18,1.0/18,1.0/18,1.0/18,1.0/18,
 			   1.0/18,1.0/36,1.0/36,1.0/36,1.0/36,1.0/36,
 			   1.0/36,1.0/36,1.0/36,1.0/36,1.0/36,1.0/36,1.0/36};
 
-void Init_Eq(void);
-double feq(double RHO, double U, double V, double W, double J,double B,int q);
+void Init(void);
+double feq(double RHO, double U, double V, double W,int q);
 void Coll_BGK(void);
 void Streaming(void); 
 void Macro(void); 
-//void BBOS(void);
-double u0[Nx1][Ny1][Nz1],v0[Nx1][Ny1][Nz1],w0[Nx1][Ny1][Nz1];
+void BBOS(void);
 void Data_Output(void);
-double Fi(double RHO, double U, double V, double W,int q);
 double af(double RHO, double U, double V, double W, double J,double B,int q);
-
 
 
 
 int main(){
 	printf("Done !\n");
 	return 0;
+}
+
+
+void Init_Eq()
+{
+	int j, i, k, q;
+	for(i=0;i<=Nx;i++) for(j=0;j<=Ny;j++) for(k = 0; k<=Nz; k++)
+	{
+		rho[i][j][k] = rho0;
+		ux[i][j][k] = ux0;
+		uy[i][j][k] = uy0;
+		uz[i][j][k] = uz0;
+		Jx[i][j][k] = ux0;
+		Jy[i][j][k] = uy0;
+		Jz[i][j][k] = uz0;
+		Bx[i][j][k] = ux0;
+		By[i][j][k] = uy0;
+		Bz[i][j][k] = uz0;
+		
+		for(q=0;q<Q;q++)
+		f[i][j][k][q]=feq(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
+	}
 }
 
 
@@ -82,7 +108,7 @@ double af(double RHO, double U, double V, double W, double Jx,double Jy, double 
 {
 	double cu;
 	cu = cx[q]*U + cy[q]*V + cz[q]*W;
-	return 3*w[q]*((cu*cx[q]-U)*(Jy*Bz-Jz*By) + (cu*cy[q]-V)*(Jz*Bx-Jx*Bz) + 
+	return 3*w[q]*RHO*((cu*cx[q]-U)*(Jy*Bz-Jz*By) + (cu*cy[q]-V)*(Jz*Bx-Jx*Bz) + 
 		(cu*cz[q]-W)*(Jy*Bx-Jx*By));
 }
 
