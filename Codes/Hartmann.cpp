@@ -9,7 +9,7 @@ const int Nx1 = Nx+1;
 const int Ny1 = Ny+1;
 const int Nz1 = Nz+1;
 const int L = Nx + 1;
-const int Q = 19
+const int Q = 19;
 const int M = 7;
 const int Qm = 7;
 const int dt = 1;
@@ -54,12 +54,12 @@ double Bz[Nx1][Ny1][Nz1];
 double tau;
 
 
-double w[Q] = {1.0/3 ,1.0/18,1.0/18,1.0/18,1.0/18,1.0/18,
+double  w[Q] = {1.0/3 ,1.0/18,1.0/18,1.0/18,1.0/18,1.0/18,
 			   1.0/18,1.0/36,1.0/36,1.0/36,1.0/36,1.0/36,
 			   1.0/36,1.0/36,1.0/36,1.0/36,1.0/36,1.0/36,1.0/36};
 
 
-double W[M] = {1/4.0,1/8.0,1/8.0,1/8.0,1/8.0,1/8.0,1/8.0};
+double wm[M] = {1/4.0,1/8.0,1/8.0,1/8.0,1/8.0,1/8.0,1/8.0};
 
 
 void Init(void);
@@ -85,7 +85,7 @@ int main(){
 
 void Init_Eq()
 {
-	int j, i, k, q;
+	int j, i, k, q, m;
 	for(i=0;i<=Nx;i++) for(j=0;j<=Ny;j++) for(k = 0; k<=Nz; k++)
 	{
 		rho[i][j][k] = rho0;
@@ -104,15 +104,15 @@ void Init_Eq()
 		}
 
 		for(m = 0; m<M;m++){
-			g[0][i][j][k][m] =geqx(double Bx[i][j][k], double By[i][j][k], double Bz[i][j][k], ux[i][j][k],uy[i][j][k],uz[i][j][k],m);
-			g[1][i][j][k][m] =geqy(double Bx[i][j][k], double By[i][j][k], double Bz[i][j][k], ux[i][j][k],uy[i][j][k],uz[i][j][k],m);
-			g[2][i][j][k][m] =geqz(double Bx[i][j][k], double By[i][j][k], double Bz[i][j][k], ux[i][j][k],uy[i][j][k],uz[i][j][k],m);
+			g[0][i][j][k][m] =geqx(Bx[i][j][k], By[i][j][k], Bz[i][j][k], ux[i][j][k],uy[i][j][k],uz[i][j][k],m);
+			g[1][i][j][k][m] =geqy(Bx[i][j][k], By[i][j][k], Bz[i][j][k], ux[i][j][k],uy[i][j][k],uz[i][j][k],m);
+			g[2][i][j][k][m] =geqz(Bx[i][j][k], By[i][j][k], Bz[i][j][k], ux[i][j][k],uy[i][j][k],uz[i][j][k],m);
 		}
 
 	}
 }
 
-// Funciones de equilibrio 
+// Equilibrium functions 
 double feq(double RHO, double U, double V, double W,int q)
 {
 	double cu, U2;
@@ -124,21 +124,21 @@ double feq(double RHO, double U, double V, double W,int q)
 
 double geqx(double Bx, double By, double Bz, double U, double V, double W,int m)
 {
-	return W[m]*(Bx + 4.0*cmx[m]*(U*Bx-Bx*U + V*Bx-By*U + W*Bx - Bz*U));
+	return wm[m]*(Bx + 4.0*cmx[m]*(U*Bx-Bx*U + V*Bx-By*U + W*Bx - Bz*U));
 }
 
 double geqy(double Bx, double By, double Bz, double U, double V, double W,int m)
 {
-	return W[m]*(By + 4.0*cmy[m]*(U*By-Bx*V + V*By-By*V + W*By - Bz*V));
+	return wm[m]*(By + 4.0*cmy[m]*(U*By-Bx*V + V*By-By*V + W*By - Bz*V));
 }
 
 double geqz(double Bx, double By, double Bz, double U, double V, double W,int m)
 {
-	return W[m]*(Bz + 4.0*cmz[m]*(U*Bz-Bx*W + V*Bz-Bz*V + W*By - Bz*W));
+	return wm[m]*(Bz + 4.0*cmz[m]*(U*Bz-Bx*W + V*Bz-Bz*V + W*By - Bz*W));
 }
 
 
-// Termino de forzamiento electrodinamico
+// Electrodynamics force
 double af(double RHO, double U, double V, double W, double Jx,double Jy, double Jz, double Bx, double By, double Bz, int q)
 {
 	double cu;
