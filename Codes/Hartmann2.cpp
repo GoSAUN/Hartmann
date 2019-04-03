@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define Nx 32 
-#define Ny 32
-#define Nz 32
+#define Nx 64
+#define Ny 64
+#define Nz 16
 #define Nx1 (Nx+1)
 #define Ny1 (Ny+1)
 #define Nz1 (Nz+1)
@@ -32,9 +32,9 @@ const double Bz0 = 0.0;
 
 
 
-int cx[Q] = {0, 1, 0,-1, 0, 0, 0, 1,-1,-1, 1, 0, 0, 0, 0, 1,-1,-1, 1};
-int cy[Q] = {0, 0, 0, 0, 0,-1, 1, 1, 1,-1,-1, 1, 1,-1,-1, 0, 0, 0, 0};
-int cz[Q] = {0, 0, 1, 0,-1, 0, 0, 0, 0, 0, 0, 1,-1,-1, 1, 1, 1,-1,-1};
+int cx[Q] = {0, 1,-1, 0, 0, 0, 0, 1,-1, 1,-1, 0, 0, 1,-1, 1,-1, 0, 0};
+int cy[Q] = {0, 0, 0, 1,-1, 0, 0, 1,-1, 0, 0, 1,-1,-1, 1, 0, 0, 1,-1};
+int cz[Q] = {0, 0, 0, 0, 0, 1,-1, 0, 0, 1,-1, 1,-1, 0, 0,-1, 1,-1, 1};
 //			 0  1  2  3. 4. 5. 6. 7. 8. 9. 10 11 12 13 14 15 16 17 18
 
 int cmx[Qm] = {0, 1, 0,-1, 0, 0, 0};
@@ -77,15 +77,19 @@ double feq(double RHO, double U, double V, double W,int q);
 double geqx(double Bx, double By, double Bz, double U, double V, double W,int m);
 double geqy(double Bx, double By, double Bz, double U, double V, double W,int m);
 double geqz(double Bx, double By, double Bz, double U, double V, double W,int m);
+
 void Coll_BGK(void);
 void Coll_BGK_M(void);
+
 void Streaming(void); 
 void StreamingM(void); 
+
 void Den_Vel_Mag(void); 
+
 void BBOS(void);
 double u0[Nx1][Ny1][Nz1],v0[Nx1][Ny1][Nz1],w0[Nx1][Ny1][Nz1];
 void Data_Output(void);
-double Si(double RHO, double U, double V, double W,int q);
+double Fi(double RHO, double U, double V, double W,int q);
 double af(double RHO, double U, double V, double W, double J,double B,int q);
 
 
@@ -98,7 +102,7 @@ int main()
 	n=0;
 	tau=0.6;
 	Init_Eq();
-	while(n <=100)
+	while(n <=1000)
 	{
 		n++;
 		Coll_BGK(); 
@@ -126,6 +130,7 @@ void Init_Eq()
 		ux[i][j][k] = ux0;
 		uy[i][j][k] = uy0;
 		uz[i][j][k] = uz0;
+
 		Jx[i][j][k] = Jx0;
 		Jy[i][j][k] = Jy0;
 		Jz[i][j][k] = Jz0;
@@ -215,13 +220,8 @@ double Si(double RHO, double U, double V, double W,int q)
 				cy[q]*cz[q]*(V*Fz + W*Fy) + cz[q]*cz[q]*W*Fz;
 	double t3 = U*Fx + V*Fy + W*Fz;
 	return (1-((dt)/(2*tau)))*w[q]*(3.0*t1+ 9.0*t2- 3.0*t3);	
-
-
-
-
-
-
 }
+
 void Coll_BGK()
 {
 	int j, i, k, q;
@@ -229,14 +229,8 @@ void Coll_BGK()
 	for (i=0;i<=Nx1;i++) for(j=0;j<=Ny1;j++) for(k=0;k<=Nz1;k++) for(q=0;q<Q;q++)
 	{
 		FEQ=feq(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q); 
-		f_post[i][j][k][q] = (1 - (dt/tau))*f[i][j][k][q];// + (dt/tau)*FEQ;
-		//-dt*Si(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
-		//+(0.5*dt)*af(rho[i][j][k],
-		//		 ux[i][j][k],uy[i][j][k],uz[i][j][k],
-		//			 (Bz[i][j+1][k]-Bz[i][j][k])/(L/Ny) + (By[i][j][k]-By[i][j][k+1])/(L/Nz), //Jx
-		//			 (Bx[i][j][k+1]-Bx[i][j][k])/(L/Nz) + (Bz[i][j][k]-Bz[i+1][j][k])/(L/Nx), //Jy
-		//			 (By[i+1][j][k]-By[i][j][k])/(L/Nx) + (Bx[i][j][k]-Bx[i][j+1][k])/(L/Ny), //Jz
-		//			 Bx[i][j][k],By[i][j][k],Bz[i][j][k],q);
+		f_post[i][j][k][q] = (1 - (dt/tau))*f[i][j][k][q]+ (dt/tau)*FEQ
+		+dt*Si(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
 	}
 }
 
@@ -302,12 +296,11 @@ void BBOS(){
 			f[i][j][k][11]=f_post[i-cx[11]*dt][Ny][k-cz[11]*dt][11];
 			f[i][j][k][14]=f_post[i-cx[14]*dt][Ny][k-cz[14]*dt][14];
 			f[i][j][k][17]=f_post[i-cx[17]*dt][Ny][k-cz[17]*dt][17];
-			}
+		}
 		
 		if(EsFrontera[i][j][k]==true){
 			//for (int q = 1; q < Q; q++)
 				//f[i][j][k][q]=f_post[i][j][k][int(q+pow(-1,q))];
-				
 				f[i][j][k][1]=f_post[i][j][k][2];
 				f[i][j][k][2]=f_post[i][j][k][1];
 				f[i][j][k][3]=f_post[i][j][k][4];
@@ -330,13 +323,7 @@ void BBOS(){
 				
 		}
 	}
-		
-		
-		
-		
-	
-		
-	}
+}
 
 
 void Den_Vel_Mag()
@@ -356,34 +343,15 @@ void Den_Vel_Mag()
 				f[i][j][k][14]+f[i][j][k][15]+f[i][j][k][16]+f[i][j][k][17]+f[i][j][k][18];
 
 				ux[i][j][k] = (f[i][j][k][1]+f[i][j][k][7]+f[i][j][k][9]+f[i][j][k][13]+f[i][j][k][15]
-			    -f[i][j][k][2]-f[i][j][k][8]-f[i][j][k][10]-f[i][j][k][14]-f[i][j][k][16]
-			    +((Bz[i][j+1][k]-Bz[i][j][k])/(L/Ny) + (By[i][j][k]-By[i][j][k+1])/(L/Nz)*Bz[i][j][k] 
-			    - (By[i+1][j][k]-By[i][j][k])/(L/Nx) + (Bx[i][j][k]-Bx[i][j+1][k])/(L/Ny)*Bx[i][j][k])*dt*0.5 
-			    )/rho[i][j][k]; //+0.5*dt*Fx;
-
+			        -f[i][j][k][2]-f[i][j][k][8]-f[i][j][k][10]-f[i][j][k][14]-f[i][j][k][16])/rho[i][j][k] + 0.5*dt*Fx;
 
 				uy[i][j][k] = (f[i][j][k][3] + f[i][j][k][7] + f[i][j][k][11] + 
-				f[i][j][k][14] + f[i][j][k][17] - f[i][j][k][4] - f[i][j][k][8]
-			    -f[i][j][k][12] - f[i][j][k][13] - f[i][j][k][18]
-			    +((By[i+1][j][k]-By[i][j][k])/(L/Nx) + (Bx[i][j][k]-Bx[i][j+1][k])/(L/Ny)*Bx[i][j][k] 
-			    	- (Bz[i][j+1][k]-Bz[i][j][k])/(L/Ny) + (By[i][j][k]-By[i][j][k+1])/(L/Nz)*Bz[i][j][k])*dt*0.5
-			    )/rho[i][j][k];// +0.5*dt*Fy;
+					f[i][j][k][14] + f[i][j][k][17] - f[i][j][k][4] - f[i][j][k][8]
+					-f[i][j][k][12] - f[i][j][k][13] - f[i][j][k][18])/rho[i][j][k]+0.5*dt*Fy;
 
 				uz[i][j][k] = (f[i][j][k][5] + f[i][j][k][9] + f[i][j][k][11]
-				+f[i][j][k][16] + f[i][j][k][18] - f[i][j][k][6] - f[i][j][k][10]
-				-f[i][j][k][12] - f[i][j][k][15] -f[i][j][k][17]
-				+((Bz[i][j+1][k]-Bz[i][j][k])/(L/Ny) + (By[i][j][k]-By[i][j][k+1])/(L/Nz)*By[i][j][k]
-				 - (Bx[i][j][k+1]-Bx[i][j][k])/(L/Nz) + (Bz[i][j][k]-Bz[i+1][j][k])/(L/Nx)*Bx[i][j][k])*dt*0.5
-				)/rho[i][j][k];// +0.5*dt*Fz;
-
-				Bx[i][j][k] = g[0][i][j][k][0]+g[0][i][j][k][1]+g[0][i][j][k][2]+g[0][i][j][k][3]
-				+g[0][i][j][k][4]+g[0][i][j][k][5]+g[0][i][j][k][6];
-
-				By[i][j][k] = g[1][i][j][k][0]+g[1][i][j][k][1]+g[1][i][j][k][2]+g[1][i][j][k][3]
-				+g[1][i][j][k][4]+g[1][i][j][k][5]+g[1][i][j][k][6];
-
-				Bz[i][j][k] = g[2][i][j][k][0]+g[2][i][j][k][1]+g[2][i][j][k][2]+g[2][i][j][k][3]
-				+g[2][i][j][k][4]+g[2][i][j][k][5]+g[2][i][j][k][6];
+					+f[i][j][k][16] + f[i][j][k][18] - f[i][j][k][6] - f[i][j][k][10]
+					-f[i][j][k][12] - f[i][j][k][15] -f[i][j][k][17])/rho[i][j][k]+0.5*dt*Fz;
 		 	}	
 }
 
