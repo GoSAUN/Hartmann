@@ -222,15 +222,31 @@ double Si(double RHO, double U, double V, double W,int q)
 	return (1-((dt)/(2*tau)))*w[q]*(3.0*t1+ 9.0*t2- 3.0*t3);	
 }
 
+//void Coll_BGK()
+//{
+//	int j, i, k, q;
+//	double FEQ;
+//	for (i=0;i<=Nx1;i++) for(j=0;j<=Ny1;j++) for(k=0;k<=Nz1;k++) for(q=0;q<Q;q++)
+//	{
+//		FEQ=feq(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q); 
+//		f_post[i][j][k][q] = (1 - (dt/tau))*f[i][j][k][q]+ (dt/tau)*FEQ
+//		+dt*Si(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
+//	}
+//}
+
 void Coll_BGK()
 {
 	int j, i, k, q;
 	double FEQ;
+	double FBAR;
 	for (i=0;i<=Nx1;i++) for(j=0;j<=Ny1;j++) for(k=0;k<=Nz1;k++) for(q=0;q<Q;q++)
 	{
 		FEQ=feq(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q); 
-		f_post[i][j][k][q] = (1 - (dt/tau))*f[i][j][k][q]+ (dt/tau)*FEQ
-		+dt*Si(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
+		FBAR=(1.0+0.5*dt/tau)*f[i][j][k][q] - 0.5*(dt/tau)*FEQ 
+		- 0.5*dt*af(rho[i][j][k], ux[i][j][k], uy[i][j][k], uz[i][j][k], 
+		  Jx[i][j][k],Jy[i][j][k], Jz[i][j][k], Bx[i][j][k], By[i][j][k], Bz[i][j][k], q);
+		f_post[i][j][k][q] = FBAR - (dt/(tau+0.5*dt))*(FBAR-FEQ)+(tau/(tau+0.5*dt))*af(rho[i][j][k], ux[i][j][k], uy[i][j][k], uz[i][j][k], 
+		  Jx[i][j][k],Jy[i][j][k], Jz[i][j][k], Bx[i][j][k], By[i][j][k], Bz[i][j][k], q);
 	}
 }
 
@@ -343,7 +359,8 @@ void Den_Vel_Mag()
 				f[i][j][k][14]+f[i][j][k][15]+f[i][j][k][16]+f[i][j][k][17]+f[i][j][k][18];
 
 				ux[i][j][k] = (f[i][j][k][1]+f[i][j][k][7]+f[i][j][k][9]+f[i][j][k][13]+f[i][j][k][15]
-			        -f[i][j][k][2]-f[i][j][k][8]-f[i][j][k][10]-f[i][j][k][14]-f[i][j][k][16])/rho[i][j][k] + 0.5*dt*Fx;
+			        -f[i][j][k][2]-f[i][j][k][8]-f[i][j][k][10]-f[i][j][k][14]-f[i][j][k][16])/rho[i][j][k] 
+					+ 0.5*dt*(Jy[i][j][k]*Bz[i][j][k]-Jz[i][j][k]*By[i][j][k]);
 
 				uy[i][j][k] = (f[i][j][k][3] + f[i][j][k][7] + f[i][j][k][11] + 
 					f[i][j][k][14] + f[i][j][k][17] - f[i][j][k][4] - f[i][j][k][8]
