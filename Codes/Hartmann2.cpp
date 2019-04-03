@@ -13,31 +13,34 @@
 #define ux0 0.0
 #define uy0 0.0   
 #define uz0 0.0   
-#define g00 0.000001 
+#define go 4.06901041667e-7
 #define dt 1
-const int M = 7;
-const int Qm = 7;
-const int a = 3;
+#define M 7
+#define Qm 7
+#define a 3
+//const int M = 7;
+//const int Qm = 7;
+//const int a = 3;
 
 
-const double Jx0 = 1.0;// Initial conditions density current vector 
+const double Jx0 = 0.1;// Initial conditions density current vector 
 const double Jy0 = 1.0;
-const double Jz0 = 1.0;
-const double Bx0 = 1.0;// Initial conditions magnetic field
+const double Jz0 = 0.1;
+const double Bx0 = 0.0;// Initial conditions magnetic field
 const double By0 = 1.0;
-const double Bz0 = 1.0;
+const double Bz0 = 0.0;
 
 
 
-int cx[Q] = {0, 1,-1, 0, 0, 0, 0, 1,-1, 1,-1, 0, 0, 1,-1, 1,-1, 0, 0};
-int cy[Q] = {0, 0, 0, 1,-1, 0, 0, 1,-1, 0, 0, 1,-1,-1, 1, 0, 0, 1,-1};
-int cz[Q] = {0, 0, 0, 0, 0, 1,-1, 0, 0, 1,-1, 1,-1, 0, 0,-1, 1,-1, 1};
+int cx[Q] = {0, 1, 0,-1, 0, 0, 0, 1,-1,-1, 1, 0, 0, 0, 0, 1,-1,-1, 1};
+int cy[Q] = {0, 0, 0, 0, 0,-1, 1, 1, 1,-1,-1, 1, 1,-1,-1, 0, 0, 0, 0};
+int cz[Q] = {0, 0, 1, 0,-1, 0, 0, 0, 0, 0, 0, 1,-1,-1, 1, 1, 1,-1,-1};
 //			 0  1  2  3. 4. 5. 6. 7. 8. 9. 10 11 12 13 14 15 16 17 18
 
 int cmx[Qm] = {0, 1, 0,-1, 0, 0, 0};
-int cmy[Qm] = {0, 0, 0, 0, 0, 1,-1};
+int cmy[Qm] = {0, 0, 0, 0, 0,-1, 1};
 int cmz[Qm] = {0, 0, 1, 0,-1, 0, 0};
-
+//             0. 1. 2. 3. 4. 5. 6.   
 
 double Fx, Fy, Fz;
 double f[Nx1][Ny1][Nz1][Q]; 
@@ -68,7 +71,7 @@ double w[Q] = {1.0/3 ,1.0/18,1.0/18,1.0/18,1.0/18,1.0/18,
 			//   12     13     14       15     16      17  	18 
 
 double wm[M] = {1/4.0,1/8.0,1/8.0,1/8.0,1/8.0,1/8.0,1/8.0};
-
+//               0.     1.    2.    3.    4.    5.    6
 void Init_Eq(void);
 double feq(double RHO, double U, double V, double W,int q);
 double geqx(double Bx, double By, double Bz, double U, double V, double W,int m);
@@ -91,18 +94,18 @@ int main()
 {
 	int n,M2,N2,O2;
 
-	M2=Nx/2; N2=Ny/2; O2 = Nz/2;
+	M2=Nx/2; N2=Ny/2; O2 = 10;
 	n=0;
-	tau=0.9;
+	tau=0.6;
 	Init_Eq();
-	while(n <=40)
+	while(n <=100)
 	{
 		n++;
 		Coll_BGK(); 
 		Coll_BGK_M();
 		Streaming(); 
 		StreamingM(); 
-		BBOS();
+		BBOS(); //esto trae problemas con la densidad
 		Den_Vel_Mag(); 
 		printf("rho=%e ux_c=%e uy_c=%e uz_c=%e k=%d\n",
 			rho[M2][N2][O2],ux[M2][N2][O2],uy[M2][N2][O2],
@@ -168,25 +171,25 @@ void Init_Eq()
 double feq(double RHO, double U, double V, double W,int q)
 {
 	double cu, U2;
-	cu=cx[q]*U+cy[q]*V+cz[q]*W; 
-	U2=U*U+V*V+W*W; 
+	cu=cx[q]*U + cy[q]*V + cz[q]*W; 
+	U2=U*U + V*V + W*W; 
 	return w[q]*RHO*(1.0+3.0*cu+4.5*cu*cu-1.5*U2);
 }
 
 
 double geqx(double Bx, double By, double Bz, double U, double V, double W,int m)
 {
-	return wm[m]*(Bx + 4.0*cmx[m]*(U*Bx-Bx*U + V*Bx-By*U + W*Bx - Bz*U));
+	return wm[m]*(Bx + 4.0*cmx[m]*(U*Bx-Bx*U + V*Bx-By*U + W*Bx-Bz*U));
 }
 
 double geqy(double Bx, double By, double Bz, double U, double V, double W,int m)
 {
-	return wm[m]*(By + 4.0*cmy[m]*(U*By-Bx*V + V*By-By*V + W*By - Bz*V));
+	return wm[m]*(By + 4.0*cmy[m]*(U*By-Bx*V + V*By-By*V + W*By-Bz*V));
 }
 
 double geqz(double Bx, double By, double Bz, double U, double V, double W,int m)
 {
-	return wm[m]*(Bz + 4.0*cmz[m]*(U*Bz-Bx*W + V*Bz-Bz*V + W*By - Bz*W));
+	return wm[m]*(Bz + 4.0*cmz[m]*(U*Bz-Bx*W + V*Bz-By*W + W*Bz - Bz*W));
 }
 
 
@@ -196,17 +199,16 @@ double af(double RHO, double U, double V, double W,
 		  double Jx,double Jy, double Jz, double 
 		  Bx, double By, double Bz, int q)
 {
-	double cu;
-	cu = cx[q]*U + cy[q]*V + cz[q]*W;
-	return 3*w[q]*RHO*((cu*cx[q]-U)*(Jy*Bz-Jz*By) + (cu*cy[q]-V)*(Jz*Bx-Jx*Bz) + 
-		(cu*cz[q]-W)*(Jy*Bx-Jx*By));
+	double Me;
+	Me = 9.0*(cx[q]*U + cy[q]*V + cz[q]*W + 1);
+	return -9.0*w[q]*RHO*((M*cx[q]-U)*(Jx*Bz-Jz*By)+(M*cy[q]-V)*(Jz*Bx-Jx*Bz)+(M*cz[q]-W)*(Jy*Bx-Jx*By));
 }
 
 
 
 double Si(double RHO, double U, double V, double W,int q)
 {
-	double Fx = 0.0, Fy = -RHO*g00, Fz = 0.0;
+	double Fx = 0.0, Fy = -RHO*go, Fz = 0.0;
 	double t1 = cx[q]*Fx + cy[q]*Fy + cz[q]*Fz;
 	double t2 = cx[q]*cx[q]*U*Fx + cx[q]*cy[q]*(V*Fx + U*Fy) + 
 				cx[q]*cz[q]*(W*Fx + U*Fz) + cy[q]*cy[q]*V*Fy +
@@ -227,14 +229,14 @@ void Coll_BGK()
 	for (i=0;i<=Nx1;i++) for(j=0;j<=Ny1;j++) for(k=0;k<=Nz1;k++) for(q=0;q<Q;q++)
 	{
 		FEQ=feq(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q); 
-		f_post[i][j][k][q] = (1 - (dt/tau))*f[i][j][k][q] + (dt/tau)*FEQ
-		-dt*Si(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q)
-		+(0.5*dt)*af(rho[i][j][k],
-					 ux[i][j][k],uy[i][j][k],uz[i][j][k],
-					 (Bz[i][j+1][k]-Bz[i][j][k])/(L/Ny) + (By[i][j][k]-By[i][j][k+1])/(L/Nz), //Jx
-					 (Bx[i][j][k+1]-Bx[i][j][k])/(L/Nz) + (Bz[i][j][k]-Bz[i+1][j][k])/(L/Nx), //Jy
-					 (By[i+1][j][k]-By[i][j][k])/(L/Nx) + (Bx[i][j][k]-Bx[i][j+1][k])/(L/Ny), //Jz
-					 Bx[i][j][k],By[i][j][k],Bz[i][j][k],q);
+		f_post[i][j][k][q] = (1 - (dt/tau))*f[i][j][k][q];// + (dt/tau)*FEQ;
+		//-dt*Si(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
+		//+(0.5*dt)*af(rho[i][j][k],
+		//		 ux[i][j][k],uy[i][j][k],uz[i][j][k],
+		//			 (Bz[i][j+1][k]-Bz[i][j][k])/(L/Ny) + (By[i][j][k]-By[i][j][k+1])/(L/Nz), //Jx
+		//			 (Bx[i][j][k+1]-Bx[i][j][k])/(L/Nz) + (Bz[i][j][k]-Bz[i+1][j][k])/(L/Nx), //Jy
+		//			 (By[i+1][j][k]-By[i][j][k])/(L/Nx) + (Bx[i][j][k]-Bx[i][j+1][k])/(L/Ny), //Jz
+		//			 Bx[i][j][k],By[i][j][k],Bz[i][j][k],q);
 	}
 }
 
@@ -248,9 +250,9 @@ void Coll_BGK_M()
 		GEQX=geqx(Bx[i][j][k],By[i][j][k],Bz[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],m); 
 		GEQY=geqy(Bx[i][j][k],By[i][j][k],Bz[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],m); 
 		GEQZ=geqz(Bx[i][j][k],By[i][j][k],Bz[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],m); 
-		g_post[0][i][j][k][m] = (1 + 0.5*(dt/tau))*g[0][i][j][k][m] - 0.5*(dt/tau)*GEQX;
-		g_post[1][i][j][k][m] = (1 + 0.5*(dt/tau))*g[1][i][j][k][m] - 0.5*(dt/tau)*GEQY;
-		g_post[2][i][j][k][m] = (1 + 0.5*(dt/tau))*g[2][i][j][k][m] - 0.5*(dt/tau)*GEQZ;
+		g_post[0][i][j][k][m] = (1 + 0.5*(dt/tau))*g[0][i][j][k][m];// - 0.5*(dt/tau)*GEQX;
+		g_post[1][i][j][k][m] = (1 + 0.5*(dt/tau))*g[1][i][j][k][m];// - 0.5*(dt/tau)*GEQY;
+		g_post[2][i][j][k][m] = (1 + 0.5*(dt/tau))*g[2][i][j][k][m];// - 0.5*(dt/tau)*GEQZ;
 	}
 }
 
@@ -340,9 +342,9 @@ void BBOS(){
 void Den_Vel_Mag()
 {
 	int j, i, k;
-	double Ax = 0.0;
-	double Ay = -g00;
-	double Az = 0.0;
+	double Fx = 0.0;
+	double Fy = -go;
+	double Fz = 0.0;
 	for(i = 0; i <= Nx; i++) 
 		for(j = 0; j <= Ny; j++) 
 			for(k = 0; k <= Nz; k++)
@@ -357,7 +359,7 @@ void Den_Vel_Mag()
 			    -f[i][j][k][2]-f[i][j][k][8]-f[i][j][k][10]-f[i][j][k][14]-f[i][j][k][16]
 			    +((Bz[i][j+1][k]-Bz[i][j][k])/(L/Ny) + (By[i][j][k]-By[i][j][k+1])/(L/Nz)*Bz[i][j][k] 
 			    - (By[i+1][j][k]-By[i][j][k])/(L/Nx) + (Bx[i][j][k]-Bx[i][j+1][k])/(L/Ny)*Bx[i][j][k])*dt*0.5 
-			    )/rho[i][j][k];
+			    )/rho[i][j][k]; //+0.5*dt*Fx;
 
 
 				uy[i][j][k] = (f[i][j][k][3] + f[i][j][k][7] + f[i][j][k][11] + 
@@ -365,14 +367,14 @@ void Den_Vel_Mag()
 			    -f[i][j][k][12] - f[i][j][k][13] - f[i][j][k][18]
 			    +((By[i+1][j][k]-By[i][j][k])/(L/Nx) + (Bx[i][j][k]-Bx[i][j+1][k])/(L/Ny)*Bx[i][j][k] 
 			    	- (Bz[i][j+1][k]-Bz[i][j][k])/(L/Ny) + (By[i][j][k]-By[i][j][k+1])/(L/Nz)*Bz[i][j][k])*dt*0.5
-			    )/rho[i][j][k];
+			    )/rho[i][j][k];// +0.5*dt*Fy;
 
 				uz[i][j][k] = (f[i][j][k][5] + f[i][j][k][9] + f[i][j][k][11]
 				+f[i][j][k][16] + f[i][j][k][18] - f[i][j][k][6] - f[i][j][k][10]
 				-f[i][j][k][12] - f[i][j][k][15] -f[i][j][k][17]
 				+((Bz[i][j+1][k]-Bz[i][j][k])/(L/Ny) + (By[i][j][k]-By[i][j][k+1])/(L/Nz)*By[i][j][k]
 				 - (Bx[i][j][k+1]-Bx[i][j][k])/(L/Nz) + (Bz[i][j][k]-Bz[i+1][j][k])/(L/Nx)*Bx[i][j][k])*dt*0.5
-				)/rho[i][j][k];
+				)/rho[i][j][k];// +0.5*dt*Fz;
 
 				Bx[i][j][k] = g[0][i][j][k][0]+g[0][i][j][k][1]+g[0][i][j][k][2]+g[0][i][j][k][3]
 				+g[0][i][j][k][4]+g[0][i][j][k][5]+g[0][i][j][k][6];
@@ -394,7 +396,7 @@ void Den_Vel_Mag()
 void Data_Output() 
 {
 	int i,j,k,z;
-	z = 1;
+	z = 10;
 	FILE *fp;
 	fp=fopen("x.dat","w+");
 	for(i=0;i<=Nx;i++) fprintf(fp,"%e \n", float(i)/L);
