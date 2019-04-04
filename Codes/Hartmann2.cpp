@@ -7,6 +7,9 @@
 #define Nx1 (Nx+1)
 #define Ny1 (Ny+1)
 #define Nz1 (Nz+1)
+#define dx 1/Nx
+#define dy 1/Ny
+#define dz 1/Nz
 #define L (Ny+1)
 #define Q 19 		
 #define rho0 1.0  
@@ -23,11 +26,11 @@
 //const int a = 3;
 
 
-const double Jx0 = 0.1;// Initial conditions density current vector 
-const double Jy0 = 1.0;
-const double Jz0 = 0.1;
+const double Jx0 = 0.0;// Initial conditions density current vector 
+const double Jy0 = 0.0;
+const double Jz0 = 0.0;
 const double Bx0 = 0.0;// Initial conditions magnetic field
-const double By0 = 1.0;
+const double By0 = 0.0;
 const double Bz0 = 0.0;
 
 
@@ -63,6 +66,7 @@ bool Inlet[Nx1][Ny1][Nz1];
 bool Outlet[Nx1][Ny1][Nz1];
 
 double tau; 
+double taum;
 double w[Q] = {1.0/3 ,1.0/18,1.0/18,1.0/18,1.0/18,1.0/18,
 			   1.0/18,1.0/36,1.0/36,1.0/36,1.0/36,1.0/36,
 			   1.0/36,1.0/36,1.0/36,1.0/36,1.0/36,1.0/36,1.0/36};
@@ -102,7 +106,7 @@ int main()
 	n=0;
 	tau=0.6;
 	Init_Eq();
-	while(n <=1000)
+	while(n <=100)
 	{
 		n++;
 		Coll_BGK(); 
@@ -254,15 +258,18 @@ void Coll_BGK()
 void Coll_BGK_M()
 {
 	int j, i, k, m;
-	double GEQX,GEQY,GEQZ;
+	double GEQX,GEQY,GEQZ,GBARX,GBARY,GBARZ;
 	for (i=0;i<=Nx1;i++) for(j=0;j<=Ny1;j++) for(k=0;k<=Nz1;k++) for(m=0;m<M;m++)
 	{
 		GEQX=geqx(Bx[i][j][k],By[i][j][k],Bz[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],m); 
 		GEQY=geqy(Bx[i][j][k],By[i][j][k],Bz[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],m); 
-		GEQZ=geqz(Bx[i][j][k],By[i][j][k],Bz[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],m); 
-		g_post[0][i][j][k][m] = (1 + 0.5*(dt/tau))*g[0][i][j][k][m];// - 0.5*(dt/tau)*GEQX;
-		g_post[1][i][j][k][m] = (1 + 0.5*(dt/tau))*g[1][i][j][k][m];// - 0.5*(dt/tau)*GEQY;
-		g_post[2][i][j][k][m] = (1 + 0.5*(dt/tau))*g[2][i][j][k][m];// - 0.5*(dt/tau)*GEQZ;
+		GEQZ=geqz(Bx[i][j][k],By[i][j][k],Bz[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],m);
+		GBARX=g[0][i][j][k][m] + 0.5*(dt/taum)*(g[0][i][j][k][m]-GEQX);
+		GBARY=g[1][i][j][k][m] + 0.5*(dt/taum)*(g[1][i][j][k][m]-GEQY);
+		GBARZ=g[2][i][j][k][m] + 0.5*(dt/taum)*(g[2][i][j][k][m]-GEQZ);
+		g_post[0][i][j][k][m] = GBARX - (dt/(taum+0.5*dt))*(GBARX-GEQX);// - 0.5*(dt/tau)*GEQX;
+		g_post[1][i][j][k][m] = GBARY - (dt/(taum+0.5*dt))*(GBARY-GEQY);// - 0.5*(dt/tau)*GEQX;
+		g_post[2][i][j][k][m] = GBARZ - (dt/(taum+0.5*dt))*(GBARZ-GEQZ);// - 0.5*(dt/tau)*GEQX;
 	}
 }
 
@@ -359,16 +366,31 @@ void Den_Vel_Mag()
 				f[i][j][k][14]+f[i][j][k][15]+f[i][j][k][16]+f[i][j][k][17]+f[i][j][k][18];
 
 				ux[i][j][k] = (f[i][j][k][1]+f[i][j][k][7]+f[i][j][k][9]+f[i][j][k][13]+f[i][j][k][15]
-			        -f[i][j][k][2]-f[i][j][k][8]-f[i][j][k][10]-f[i][j][k][14]-f[i][j][k][16])/rho[i][j][k] 
+			        -f[i][j][k][2]-f[i][j][k][8]-f[i][j][k][10]-f[i][j][k][14]-f[i][j][k][16])/rho[i][j][k]
 					+ 0.5*dt*(Jy[i][j][k]*Bz[i][j][k]-Jz[i][j][k]*By[i][j][k]);
 
 				uy[i][j][k] = (f[i][j][k][3] + f[i][j][k][7] + f[i][j][k][11] + 
 					f[i][j][k][14] + f[i][j][k][17] - f[i][j][k][4] - f[i][j][k][8]
-					-f[i][j][k][12] - f[i][j][k][13] - f[i][j][k][18])/rho[i][j][k]+0.5*dt*Fy;
+					-f[i][j][k][12] - f[i][j][k][13] - f[i][j][k][18])/rho[i][j][k]
+					+ 0.5*dt*(Jz[i][j][k]*Bx[i][j][k]-Jx[i][j][k]*Bz[i][j][k]);
 
 				uz[i][j][k] = (f[i][j][k][5] + f[i][j][k][9] + f[i][j][k][11]
 					+f[i][j][k][16] + f[i][j][k][18] - f[i][j][k][6] - f[i][j][k][10]
-					-f[i][j][k][12] - f[i][j][k][15] -f[i][j][k][17])/rho[i][j][k]+0.5*dt*Fz;
+					-f[i][j][k][12] - f[i][j][k][15] -f[i][j][k][17])/rho[i][j][k]
+					+ 0.5*dt*(Jx[i][j][k]*By[i][j][k]-Jy[i][j][k]*Bx[i][j][k]);
+
+				Bx[i][j][k] = g[0][i][j][k][0]+g[0][i][j][k][1]+g[0][i][j][k][2]+g[0][i][j][k][3]
+				+g[0][i][j][k][4]+g[0][i][j][k][5]+g[0][i][j][k][6];
+
+				By[i][j][k] = g[1][i][j][k][0]+g[1][i][j][k][1]+g[1][i][j][k][2]+g[1][i][j][k][3]
+				+g[1][i][j][k][4]+g[1][i][j][k][5]+g[1][i][j][k][6];
+				
+				Bx[i][j][k] = g[2][i][j][k][0]+g[2][i][j][k][1]+g[2][i][j][k][2]+g[2][i][j][k][3]
+				+g[2][i][j][k][4]+g[2][i][j][k][5]+g[2][i][j][k][6];
+
+				Jx[i][j][k] = (Bz[i][j+1][k]-Bz[i][j-1][k])/dy -(By[i][j][k+1]-By[i][j][k-1])/dz;
+				Jy[i][j][k] = (Bx[i][j][k+1]-Bx[i][j][k-1])/dz -(Bz[i+1][j][k]-Bz[i-1][j][k])/dx;
+				Jz[i][j][k] = (By[i+1][j][k]-By[i-1][j][k])/dx -(Bx[i][j+1][k]-Bx[i][j-1][k])/dy;
 		 	}	
 }
 
