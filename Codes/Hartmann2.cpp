@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define Nx 64
-#define Ny 64
-#define Nz 16
+#define Nx 128
+#define Ny 128
+#define Nz 8
 #define Nx1 (Nx+1)
 #define Ny1 (Ny+1)
 #define Nz1 (Nz+1)
@@ -87,6 +87,8 @@ void StreamingM(void);
 void Den_Vel_Mag(void); 
 
 void BBOS(void);
+void BCMagnetic(void);
+
 double u0[Nx1][Ny1][Nz1],v0[Nx1][Ny1][Nz1],w0[Nx1][Ny1][Nz1];
 void Data_Output(void);
 double Fi(double RHO, double U, double V, double W,int q);
@@ -103,7 +105,7 @@ int main()
 	tau=0.6;
 	taum = 0.6;
 	Init_Eq();
-	while(n <=1000)
+	while(n <=6553)
 	{
 		n++;
 		Coll_BGK(); 
@@ -111,6 +113,7 @@ int main()
 		Streaming(); 
 		StreamingM(); 
 		BBOS(); //esto trae problemas con la densidad
+		BCMagnetic();
 		Den_Vel_Mag(); 
 		printf("rho=%e ux_c=%e uy_c=%e uz_c=%e k=%d\n",
 			rho[M2][N2][O2],ux[M2][N2][O2],uy[M2][N2][O2],
@@ -339,9 +342,54 @@ void BBOS(){
 				f[i][j][k][15]=f_post[i][j][k][16];
 				f[i][j][k][16]=f_post[i][j][k][15];
 				f[i][j][k][17]=f_post[i][j][k][18];
-				f[i][j][k][18]=f_post[i][j][k][17];
-				
-				
+				f[i][j][k][18]=f_post[i][j][k][17];		
+		}
+	}
+}
+
+void BCMagnetic(){
+	int i,j,k,m;
+	for (i=0;i<=Nx;i++) for(j=0;j<=Ny;j++) for(k=0;k<=Nz;k++){
+
+		if(Inlet[i][j][k] == true){
+			//plano arriba 
+			//g[0][i][j][k][5] = g_post[0][i-cmx[5]*dt][0][k-cmz[5]*dt][5];
+			g[1][i][j][k][5] = g_post[1][i-cmx[5]*dt][0][k-cmz[5]*dt][5];
+			//g[2][i][j][k][5] = g_post[2][i-cmx[5]*dt][0][k-cmz[5]*dt][5];
+
+		}
+
+		if (Outlet[i][j][k] == true){
+			//plano abajo
+
+			//g[0][i][j][k][6] = g_post[0][i-cmx[6]*dt][Ny][k-cmz[6]*dt][6];
+			g[1][i][j][k][6] = g_post[0][i-cmx[6]*dt][Ny][k-cmz[6]*dt][6];
+			//g[2][i][j][k][6] = g_post[0][i-cmx[6]*dt][Ny][k-cmz[6]*dt][6];
+
+		}
+		if(EsFrontera[i][j][k]==true){
+
+				g[0][i][j][k][1] = g_post[0][i][j][k][3];
+				g[0][i][j][k][3] = g_post[0][i][j][k][1];
+				g[0][i][j][k][4] = g_post[0][i][j][k][2];
+				g[0][i][j][k][2] = g_post[0][i][j][k][4];
+				g[0][i][j][k][5] = g_post[0][i][j][k][6];
+				g[0][i][j][k][6] = g_post[0][i][j][k][5];
+
+				g[1][i][j][k][1] = 0;//g_post[1][i][j][k][3];
+				g[1][i][j][k][3] = 0;//g_post[1][i][j][k][1];
+				g[1][i][j][k][4] = 0;//g_post[1][i][j][k][2];
+				g[1][i][j][k][2] = 0;//g_post[1][i][j][k][4];
+				g[1][i][j][k][5] = 0;//g_post[1][i][j][k][6];
+				g[1][i][j][k][6] = 0;//g_post[1][i][j][k][5];
+
+				g[2][i][j][k][1] = 0;//g_post[2][i][j][k][3];
+				g[2][i][j][k][3] = 0;//g_post[2][i][j][k][1];
+				g[2][i][j][k][4] = 0;//g_post[2][i][j][k][2];
+				g[2][i][j][k][2] = 0;//g_post[2][i][j][k][4];
+				g[2][i][j][k][5] = 0;//g_post[2][i][j][k][6];
+				g[2][i][j][k][6] = 0;//g_post[2][i][j][k][5];
+						
 		}
 	}
 }
@@ -401,7 +449,7 @@ void Den_Vel_Mag()
 void Data_Output() 
 {
 	int i,j,k,z;
-	z = 10;
+	z = 4;
 	FILE *fp;
 	fp=fopen("x.dat","w+");
 	for(i=0;i<=Nx;i++) fprintf(fp,"%e \n", float(i)/L);
@@ -432,14 +480,22 @@ void Data_Output()
 
 	fp=fopen("Bx.dat","w");
 	for(i=0;i<=Nx;i++){
-	for (j=0; j<=Ny; j++) fprintf(fp,"%e ",Bx[j][i][z]);
+	for (j=0; j<=Ny; j++) fprintf(fp,"%e ",Bx[i][j][z]);
 	fprintf(fp,"\n");
 	}
 	fclose(fp);
 
 	fp=fopen("By.dat","w");
 	for(i=0;i<=Nx;i++){
-	for (j=0; j<=Ny; j++) fprintf(fp,"%e ",By[j][i][z]);
+	for (j=0; j<=Ny; j++) fprintf(fp,"%e ",By[i][j][z]);
+	fprintf(fp,"\n");
+	}
+	fclose(fp);
+
+
+	fp=fopen("Bz.dat","w");
+	for(i=0;i<=Nx;i++){
+	for (j=0; j<=Ny; j++) fprintf(fp,"%e ",Bz[i][j][z]);
 	fprintf(fp,"\n");
 	}
 	fclose(fp);
