@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define Nx 128
-#define Ny 128
+#define Nx 64
+#define Ny 64
 #define Nz 8
 #define Nx1 (Nx+1)
 #define Ny1 (Ny+1)
@@ -27,7 +27,7 @@ const double Jy0 = 0.0;
 const double Jz0 = 0.0;
 const double Bx0 = 0.0;// Initial conditions magnetic field
 const double By0 = 0.0;
-const double Bz0 = 1e-4;
+const double Bz0 = 1e-5;
 
 
 
@@ -55,7 +55,7 @@ double Jz[Nx1][Ny1][Nz1];
 double Bx[Nx1][Ny1][Nz1];
 double By[Nx1][Ny1][Nz1];
 double Bz[Nx1][Ny1][Nz1];
-
+double Btest[Nx1][Ny1][Nz1];
 
 bool EsFrontera[Nx1][Ny1][Nz1];
 bool Inlet[Nx1][Ny1][Nz1];
@@ -94,6 +94,8 @@ void Data_Output(void);
 double Fi(double RHO, double U, double V, double W,int q);
 double af(double RHO, double U, double V, double W, double J,double B,int q);
 
+void divB();
+
 
 
 int main()
@@ -105,7 +107,7 @@ int main()
 	tau=0.6;
 	taum = 0.6;
 	Init_Eq();
-	while(n <=6553)
+	while(n <=1000)
 	{
 		n++;
 		Coll_BGK(); 
@@ -114,10 +116,12 @@ int main()
 		StreamingM(); 
 		BBOS(); //esto trae problemas con la densidad
 		BCMagnetic();
-		Den_Vel_Mag(); 
-		printf("rho=%e ux_c=%e uy_c=%e uz_c=%e k=%d\n",
-			rho[M2][N2][O2],ux[M2][N2][O2],uy[M2][N2][O2],
-			uz[M2][N2][O2], n); 	
+		Den_Vel_Mag();
+		divB();
+		//printf("rho=%e ux_c=%e uy_c=%e uz_c=%e k=%d\n",
+		//	rho[M2][N2][O2],ux[M2][N2][O2],uy[M2][N2][O2],
+		//	uz[M2][N2][O2], n); 	
+		printf("div B =%e ux=%e k=%d\n",Btest[M2][N2][O2],ux[M2][N2][O2], n); 	
 	}
 	Data_Output();
 	printf("Done !\n"); 
@@ -376,19 +380,19 @@ void BCMagnetic(){
 				g[0][i][j][k][5] = g_post[0][i][j][k][6];
 				g[0][i][j][k][6] = g_post[0][i][j][k][5];
 
-				g[1][i][j][k][1] = 0;//g_post[1][i][j][k][3];
-				g[1][i][j][k][3] = 0;//g_post[1][i][j][k][1];
-				g[1][i][j][k][4] = 0;//g_post[1][i][j][k][2];
-				g[1][i][j][k][2] = 0;//g_post[1][i][j][k][4];
-				g[1][i][j][k][5] = 0;//g_post[1][i][j][k][6];
-				g[1][i][j][k][6] = 0;//g_post[1][i][j][k][5];
+				//g[1][i][j][k][1] = g_post[1][i][j][k][3];
+				//g[1][i][j][k][3] = g_post[1][i][j][k][1];
+				//g[1][i][j][k][4] = g_post[1][i][j][k][2];
+				//g[1][i][j][k][2] = g_post[1][i][j][k][4];
+				//g[1][i][j][k][5] = g_post[1][i][j][k][6];
+				//g[1][i][j][k][6] = g_post[1][i][j][k][5];
 
-				g[2][i][j][k][1] = 0;//g_post[2][i][j][k][3];
-				g[2][i][j][k][3] = 0;//g_post[2][i][j][k][1];
-				g[2][i][j][k][4] = 0;//g_post[2][i][j][k][2];
-				g[2][i][j][k][2] = 0;//g_post[2][i][j][k][4];
-				g[2][i][j][k][5] = 0;//g_post[2][i][j][k][6];
-				g[2][i][j][k][6] = 0;//g_post[2][i][j][k][5];
+				//g[2][i][j][k][1] = g_post[2][i][j][k][3];
+				//g[2][i][j][k][3] = g_post[2][i][j][k][1];
+				//g[2][i][j][k][4] = g_post[2][i][j][k][2];
+				//g[2][i][j][k][2] = g_post[2][i][j][k][4];
+				//g[2][i][j][k][5] = g_post[2][i][j][k][6];
+				//g[2][i][j][k][6] = g_post[2][i][j][k][5];
 						
 		}
 	}
@@ -401,50 +405,60 @@ void Den_Vel_Mag()
 	double Fx = 0.0;
 	double Fy = -go;
 	double Fz = 0.0;
-	for(i = 0; i <= Nx; i++) 
-		for(j = 0; j <= Ny; j++) 
-			for(k = 0; k <= Nz; k++)
-			{
+	for(i = 0; i <= Nx; i++) for(j = 0; j <= Ny; j++) for(k = 0; k <= Nz; k++)
+		{
 	
-				rho[i][j][k] = f[i][j][k][0]+f[i][j][k][1]+f[i][j][k][2]+f[i][j][k][3]+
-				f[i][j][k][4]+f[i][j][k][5]+f[i][j][k][6]+f[i][j][k][7]+f[i][j][k][8]+
-				f[i][j][k][9]+f[i][j][k][10]+f[i][j][k][11]+f[i][j][k][12]+f[i][j][k][13]+
-				f[i][j][k][14]+f[i][j][k][15]+f[i][j][k][16]+f[i][j][k][17]+f[i][j][k][18];
+			rho[i][j][k] = f[i][j][k][0]+f[i][j][k][1]+f[i][j][k][2]+f[i][j][k][3]+
+			f[i][j][k][4]+f[i][j][k][5]+f[i][j][k][6]+f[i][j][k][7]+f[i][j][k][8]+
+			f[i][j][k][9]+f[i][j][k][10]+f[i][j][k][11]+f[i][j][k][12]+f[i][j][k][13]+
+			f[i][j][k][14]+f[i][j][k][15]+f[i][j][k][16]+f[i][j][k][17]+f[i][j][k][18];
 
-				ux[i][j][k] = (f[i][j][k][1]+f[i][j][k][7]+f[i][j][k][9]+f[i][j][k][13]+f[i][j][k][15]
-			        -f[i][j][k][2]-f[i][j][k][8]-f[i][j][k][10]-f[i][j][k][14]-f[i][j][k][16])/rho[i][j][k]
-					+ 0.5*dt*(Jy[i][j][k]*Bz[i][j][k]-Jz[i][j][k]*By[i][j][k])+0.5*dt*Fx;
+			ux[i][j][k] = (f[i][j][k][1]+f[i][j][k][7]+f[i][j][k][9]+f[i][j][k][13]+f[i][j][k][15]
+			    -f[i][j][k][2]-f[i][j][k][8]-f[i][j][k][10]-f[i][j][k][14]-f[i][j][k][16])/rho[i][j][k]
+				+ 0.5*dt*(Jy[i][j][k]*Bz[i][j][k]-Jz[i][j][k]*By[i][j][k])+0.5*dt*Fx;
 
-				uy[i][j][k] = (f[i][j][k][3] + f[i][j][k][7] + f[i][j][k][11] + 
-					f[i][j][k][14] + f[i][j][k][17] - f[i][j][k][4] - f[i][j][k][8]
-					-f[i][j][k][12] - f[i][j][k][13] - f[i][j][k][18])/rho[i][j][k]
-					+ 0.5*dt*(Jz[i][j][k]*Bx[i][j][k]-Jx[i][j][k]*Bz[i][j][k])+0.5*dt*Fy;
+			uy[i][j][k] = (f[i][j][k][3] + f[i][j][k][7] + f[i][j][k][11] + 
+				f[i][j][k][14] + f[i][j][k][17] - f[i][j][k][4] - f[i][j][k][8]
+				-f[i][j][k][12] - f[i][j][k][13] - f[i][j][k][18])/rho[i][j][k]
+				+ 0.5*dt*(Jz[i][j][k]*Bx[i][j][k]-Jx[i][j][k]*Bz[i][j][k])+0.5*dt*Fy;
 
-				uz[i][j][k] = (f[i][j][k][5] + f[i][j][k][9] + f[i][j][k][11]
-					+f[i][j][k][16] + f[i][j][k][18] - f[i][j][k][6] - f[i][j][k][10]
-					-f[i][j][k][12] - f[i][j][k][15] -f[i][j][k][17])/rho[i][j][k]
-					+ 0.5*dt*(Jx[i][j][k]*By[i][j][k]-Jy[i][j][k]*Bx[i][j][k])+0.5*dt*Fz;
+			uz[i][j][k] = (f[i][j][k][5] + f[i][j][k][9] + f[i][j][k][11]
+				+f[i][j][k][16] + f[i][j][k][18] - f[i][j][k][6] - f[i][j][k][10]
+				-f[i][j][k][12] - f[i][j][k][15] -f[i][j][k][17])/rho[i][j][k]
+				+ 0.5*dt*(Jx[i][j][k]*By[i][j][k]-Jy[i][j][k]*Bx[i][j][k])+0.5*dt*Fz;
 
-				Bx[i][j][k] = g[0][i][j][k][0]+g[0][i][j][k][1]+g[0][i][j][k][2]+g[0][i][j][k][3]
-				+g[0][i][j][k][4]+g[0][i][j][k][5]+g[0][i][j][k][6];
+			Bx[i][j][k] = g[0][i][j][k][0]+g[0][i][j][k][1]+g[0][i][j][k][2]+g[0][i][j][k][3]
+			+g[0][i][j][k][4]+g[0][i][j][k][5]+g[0][i][j][k][6];
 
-				By[i][j][k] = g[1][i][j][k][0]+g[1][i][j][k][1]+g[1][i][j][k][2]+g[1][i][j][k][3]
-				+g[1][i][j][k][4]+g[1][i][j][k][5]+g[1][i][j][k][6];
+			By[i][j][k] = g[1][i][j][k][0]+g[1][i][j][k][1]+g[1][i][j][k][2]+g[1][i][j][k][3]
+			+g[1][i][j][k][4]+g[1][i][j][k][5]+g[1][i][j][k][6];
 				
-				Bx[i][j][k] = g[2][i][j][k][0]+g[2][i][j][k][1]+g[2][i][j][k][2]+g[2][i][j][k][3]
+			Bx[i][j][k] = g[2][i][j][k][0]+g[2][i][j][k][1]+g[2][i][j][k][2]+g[2][i][j][k][3]
 				+g[2][i][j][k][4]+g[2][i][j][k][5]+g[2][i][j][k][6];
 
-				Jx[i][j][k] = (Bz[i][j+1][k]-Bz[i][j-1][k])/dy -(By[i][j][k+1]-By[i][j][k-1])/dz;
-				Jy[i][j][k] = (Bx[i][j][k+1]-Bx[i][j][k-1])/dz -(Bz[i+1][j][k]-Bz[i-1][j][k])/dx;
-				Jz[i][j][k] = (By[i+1][j][k]-By[i-1][j][k])/dx -(Bx[i][j+1][k]-Bx[i][j-1][k])/dy;
-		 	}	
+				
+		 	}
+
+	for(i = 1; i <= Nx; i++) for(j = 1; j <= Ny; j++) for(k = 1; k <= Nz; k++)
+		{
+			Jx[i][j][k] = (Bz[i][j+1][k]-Bz[i][j-1][k])/dy -(By[i][j][k+1]-By[i][j][k-1])/dz;
+			Jy[i][j][k] = (Bx[i][j][k+1]-Bx[i][j][k-1])/dz -(Bz[i+1][j][k]-Bz[i-1][j][k])/dx;
+			Jz[i][j][k] = (By[i+1][j][k]-By[i-1][j][k])/dx -(Bx[i][j+1][k]-Bx[i][j-1][k])/dy;	
+		}	
+
+
+
+
 }
 
-
-
-
-
-
+void divB()
+{
+	int i,j,k;
+	for (i=0;i<=Nx;i++) for(j=0;j<=Ny;j++) for(k=0;k<=Nz;k++)
+	{
+		Btest[i][j][k] = (Bx[i+1][j][k]-Bx[i-1][j][k])/dx + (By[i][j-1][k]-By[i][j-1][k])/dy +(Bz[i][j][k+1]-Bz[i][j][k-1])/dz;
+	}
+}
 
 void Data_Output() 
 {
