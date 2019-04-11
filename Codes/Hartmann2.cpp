@@ -107,7 +107,7 @@ int main()
 	tau=0.6;
 	taum = 0.6;
 	Init_Eq();
-	while(n <=3000)
+	while(n <=100)
 	{
 		n++;
 		Coll_BGK(); 
@@ -121,7 +121,7 @@ int main()
 		//printf("rho=%e ux_c=%e uy_c=%e uz_c=%e k=%d\n",
 		//	rho[M2][N2][O2],ux[M2][N2][O2],uy[M2][N2][O2],
 		//	uz[M2][N2][O2], n); 	
-		printf("div B =%e ux=%e k=%d\n",Btest[M2][N2][O2],ux[M2][N2][O2], n); 	
+		printf("div B =%e uy=%e k=%d\n",Btest[M2][N2][O2],uy[M2][N2][O2], n); 	
 	}
 	Data_Output();
 	printf("Done !\n"); 
@@ -437,18 +437,53 @@ void Den_Vel_Mag()
 				+g[2][i][j][k][4]+g[2][i][j][k][5]+g[2][i][j][k][6];
 
 				
-		 	}
+			if ( j == 0)
+			{
+				Jx[i][j][k] = 0.5*(-3.0*Bz[i][j][k]+4.0*Bz[i][j+1][k]-Bz[i][j+2][k])/dy - 0.5*(-3.0*By[i][j][k]+4.0*By[i][j][k+1]-By[i][j][k+2])/dz ;			
+			}
+			else if (j == Ny)
+			{
+				Jx[i][j][k] = 0.5*(3.0*Bz[i][j][k]-4.0*Bz[i][j-1][k]+Bz[i][j-2][k])/dy - 0.5*(3.0*By[i][j][k]-4.0*By[i][j][k-1]+By[i][j][k-2])/dz ;
+			}
+			else
+			{
+				Jx[i][j][k] = (Bz[i][j+1][k]-Bz[i][j-1][k])/dy -(By[i][j][k+1]-By[i][j][k-1])/dz;
+			}	
 
-	for(i = 1; i <= Nx; i++) for(j = 1; j <= Ny; j++) for(k = 1; k <= Nz; k++)
-		{
-			Jx[i][j][k] = (Bz[i][j+1][k]-Bz[i][j-1][k])/dy -(By[i][j][k+1]-By[i][j][k-1])/dz;
-			Jy[i][j][k] = (Bx[i][j][k+1]-Bx[i][j][k-1])/dz -(Bz[i+1][j][k]-Bz[i-1][j][k])/dx;
-			Jz[i][j][k] = (By[i+1][j][k]-By[i-1][j][k])/dx -(Bx[i][j+1][k]-Bx[i][j-1][k])/dy;	
-		}	
+
+
+			if ( i == 0 )
+			{
+				Jy[i][j][k] = 0.5*(-3.0*Bx[i][j][k]+4.0*Bx[i][j][k+1]-Bx[i][j][k+2])/dz - 0.5*(-3.0*Bz[i][j][k]+4.0*Bz[i+1][j][k]-Bz[i+2][j][k])/dx ;			
+			}
+			else if ( i == Ny )
+			{
+				Jy[i][j][k] = 0.5*(3.0*Bx[i][j][k]-4.0*Bx[i][j][k-1]+Bx[i][j][k-2])/dz - 0.5*(3.0*Bz[i][j][k]-4.0*Bz[i+1][j][k]+Bz[i-2][j][k])/dx ;			
+			}
+			else
+			{
+				Jy[i][j][k] = (Bx[i][j][k+1]-Bx[i][j][k-1])/dz -(Bz[i+1][j][k]-Bz[i-1][j][k])/dx;
+			}
 
 
 
 
+			if ( k == 0 )
+			{
+				Jz[i][j][k] = 0.5*(-3.0*By[i][j][k]+4.0*By[i+1][j][k]-By[i+2][j][k])/dz - 0.5*(-3.0*Bx[i][j][k]+4.0*Bx[i][j+1][k]-Bx[i][j+2][k])/dx ;			
+			}
+
+			else if ( k == 0 )
+			{
+				Jz[i][j][k] = 0.5*(3.0*By[i][j][k]-4.0*By[i-1][j][k]+By[i-2][j][k])/dz - 0.5*(3.0*Bx[i][j][k]-4.0*Bx[i][j-1][k]+Bx[i][j-2][k])/dx ;			
+			}
+			else
+			{
+				Jz[i][j][k] = (By[i+1][j][k]-By[i-1][j][k])/dx -(Bx[i][j+1][k]-Bx[i][j-1][k])/dy;	
+			}
+			
+		
+		}
 }
 
 void divB()
