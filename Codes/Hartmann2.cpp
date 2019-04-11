@@ -27,7 +27,7 @@ const double Jy0 = 0.0;
 const double Jz0 = 0.0;
 const double Bx0 = 0.0;// Initial conditions magnetic field
 const double By0 = 0.0;
-const double Bz0 = 1e-5;
+const double Bz0 = 1e-3;
 
 
 
@@ -107,7 +107,7 @@ int main()
 	tau=0.6;
 	taum = 0.6;
 	Init_Eq();
-	while(n <=1000)
+	while(n <=3000)
 	{
 		n++;
 		Coll_BGK(); 
