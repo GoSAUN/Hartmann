@@ -491,7 +491,34 @@ void divB()
 	int i,j,k;
 	for (i=0;i<=Nx;i++) for(j=0;j<=Ny;j++) for(k=0;k<=Nz;k++)
 	{
+		if (i == 0)
+		{
+			0.5*(-3.0*Bx[i][j][k]+4.0*Bx[i+1][j][k]-Bx[i+2][j][k])/dx;
+		}
+		else if (i == Nx)
+		{
+			0.5*(3.0*Bx[i][j][k]-4.0*Bx[i-1][j][k]+Bx[i-2][j][k])/dx;	
+		}
+		else if (j==0)
+		{
+			0.5*(-3.0*Bx[i][j][k]+4.0*Bx[i][j+1][k]+Bx[i][j+2][k])/dy;	
+		}
+		else if (j==Ny)
+		{
+			0.5*(3.0*Bx[i][j][k]-4.0*Bx[i][j-1][k]+Bx[i][j-2][k])/dy;
+		}
+		else if (k==0)
+		{
+			0.5*(-3.0*Bx[i][j][k]+4.0*Bx[i][j][k+1]-Bx[i][j][k+2])/dz;
+		}
+		else if (k==Nz)
+		{
+			0.5*(3.0*Bx[i][j][k]-4.0*Bx[i][j][k-1]+Bx[i][j][k-2])/dz;
+		}
+		else
+		{
 		Btest[i][j][k] = (Bx[i+1][j][k]-Bx[i-1][j][k])/dx + (By[i][j-1][k]-By[i][j-1][k])/dy +(Bz[i][j][k+1]-Bz[i][j][k-1])/dz;
+		}
 	}
 }
 
