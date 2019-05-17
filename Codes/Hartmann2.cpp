@@ -3,7 +3,7 @@
 #include <math.h>
 #define Nx 64
 #define Ny 64
-#define Nz 8
+#define Nz 64
 #define Nx1 (Nx+1)
 #define Ny1 (Ny+1)
 #define Nz1 (Nz+1)
@@ -25,9 +25,9 @@
 const double Jx0 = 0.0;// Initial conditions density current vector 
 const double Jy0 = 0.0;
 const double Jz0 = 0.0;
-const double Bx0 = 0.0;// Initial conditions magnetic field
+const double Bx0 = -5e1;// Initial conditions magnetic field
 const double By0 = 0.0;
-const double Bz0 = 1e-3;
+const double Bz0 = 0.0;
 
 
 
@@ -58,8 +58,10 @@ double Bz[Nx1][Ny1][Nz1];
 double Btest[Nx1][Ny1][Nz1];
 
 bool EsFrontera[Nx1][Ny1][Nz1];
-bool Inlet[Nx1][Ny1][Nz1];
-bool Outlet[Nx1][Ny1][Nz1];
+bool Inlety[Nx1][Ny1][Nz1];
+bool Inletz[Nx1][Ny1][Nz1];
+bool Outlety[Nx1][Ny1][Nz1];
+bool Outletz[Nx1][Ny1][Nz1];
 
 double tau; 
 double taum;
@@ -79,6 +81,7 @@ double geqy(double Bx, double By, double Bz, double U, double V, double W,int m)
 double geqz(double Bx, double By, double Bz, double U, double V, double W,int m);
 
 void Coll_BGK(void);
+void Coll_BGKP(void);
 void Coll_BGK_M(void);
 
 void Streaming(void); 
@@ -91,25 +94,29 @@ void BCMagnetic(void);
 
 double u0[Nx1][Ny1][Nz1],v0[Nx1][Ny1][Nz1],w0[Nx1][Ny1][Nz1];
 void Data_Output(void);
-double Fi(double RHO, double U, double V, double W,int q);
+//double Fi(double RHO, double U, double V, double W,int q);
 double af(double RHO, double U, double V, double W, double J,double B,int q);
-
+double Si(double RHO, double U, double V, double W,int q);
 void divB();
 
 
 
-int main()
+int main(int argc, char* argv[])
 {
 	int n,M2,N2,O2;
-
-	M2=Nx/2; N2=Ny/2; O2 = 10;
+	double uold,error, tol= 1e-10;
+	M2=Nx/2; N2=Ny/2; O2 = Nz/2;
 	n=0;
 	tau=0.6;
 	taum = 0.6;
+	uold = 0.0;
+	error = 1e-1;
+	printf("tolerancia=%e\n",tol);
 	Init_Eq();
-	while(n <=100)
+	while(error > tol)
 	{
 		n++;
+		uold = uy[M2][N2][O2];
 		Coll_BGK(); 
 		Coll_BGK_M();
 		Streaming(); 
@@ -118,12 +125,17 @@ int main()
 		BCMagnetic();
 		Den_Vel_Mag();
 		divB();
+		error = abs(uy[M2][N2][O2]-uold);
 		//printf("rho=%e ux_c=%e uy_c=%e uz_c=%e k=%d\n",
 		//	rho[M2][N2][O2],ux[M2][N2][O2],uy[M2][N2][O2],
-		//	uz[M2][N2][O2], n); 	
-		printf("div B =%e uy=%e k=%d\n",Btest[M2][N2][O2],uy[M2][N2][O2], n); 	
+		//	uz[M2][N2][O2], n); 
+		if (n%500==0)
+			{
+				printf("div B =%e uy=%.10e error=%.10e k=%d\n",Btest[M2][N2][O2],uy[M2][N2][O2],error, n); 	
+			}	
 	}
 	Data_Output();
+	printf("%d\n", n);
 	printf("Done !\n"); 
 }
 
@@ -151,8 +163,10 @@ void Init_Eq()
 		EsFrontera[Nx][j][k] = true;
 		EsFrontera[i][j][0] = true;
 		EsFrontera[i][j][Nz] = true;
-		Inlet[i][Ny][k] = true;
-		Outlet[i][0][k] = true;
+		Inlety[i][Ny][k] = true;
+		Outlety[i][0][k] = true;
+		Inletz[i][j][Nz] = true;
+		Outletz[i][j][0] = true;
 		
 		for(q=0;q<Q;q++)
 		f[i][j][k][q]=feq(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
@@ -230,18 +244,19 @@ double Si(double RHO, double U, double V, double W,int q)
 	return (1-((dt)/(2*tau)))*w[q]*(3.0*t1+ 9.0*t2- 3.0*t3);	
 }
 
-//void Coll_BGK()
-//{
-//	int j, i, k, q;
-//	double FEQ;
-//	for (i=0;i<=Nx1;i++) for(j=0;j<=Ny1;j++) for(k=0;k<=Nz1;k++) for(q=0;q<Q;q++)
-//	{
-//		FEQ=feq(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q); 
-//		f_post[i][j][k][q] = (1 - (dt/tau))*f[i][j][k][q]+ (dt/tau)*FEQ
-//		+dt*Si(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
-//	}
-//}
+void Coll_BGKP()
+{
+	int j, i, k, q;
+	double FEQ;
+	for (i=0;i<=Nx1;i++) for(j=0;j<=Ny1;j++) for(k=0;k<=Nz1;k++) for(q=0;q<Q;q++)
+	{
+		FEQ=feq(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q); 
+		f_post[i][j][k][q] = (1 - (dt/tau))*f[i][j][k][q]+ (dt/tau)*FEQ
+		+dt*Si(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
+	}
+}
 
+/*
 void Coll_BGK()
 {
 	int j, i, k, q;
@@ -258,6 +273,24 @@ void Coll_BGK()
 		+dt*Si(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
 	}
 }
+*/
+void Coll_BGK()
+{
+	int j, i, k, q;
+	double FEQ,acel,P;
+	double FBAR;
+	for (i=0;i<=Nx1;i++) for(j=0;j<=Ny1;j++) for(k=0;k<=Nz1;k++) for(q=0;q<Q;q++)
+	{
+		FEQ=feq(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
+		acel =  af(rho[i][j][k], ux[i][j][k], uy[i][j][k], uz[i][j][k], 
+		  Jx[i][j][k],Jy[i][j][k], Jz[i][j][k], Bx[i][j][k], By[i][j][k], Bz[i][j][k], q);
+		P = Si(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
+		FBAR = f[i][j][k][q] + (0.5*dt/tau)*(f[i][j][k][q]-FEQ)-(0.5*dt/tau)*acel;
+
+		f_post[i][j][k][q] = FBAR - (dt/(tau+0.5*dt))*(FBAR-FEQ)+(tau/(tau+0.5*dt))*acel
+		+dt*P;
+	}
+}
 
 
 void Coll_BGK_M()
@@ -272,9 +305,9 @@ void Coll_BGK_M()
 		GBARX=g[0][i][j][k][m] + 0.5*(dt/taum)*(g[0][i][j][k][m]-GEQX);
 		GBARY=g[1][i][j][k][m] + 0.5*(dt/taum)*(g[1][i][j][k][m]-GEQY);
 		GBARZ=g[2][i][j][k][m] + 0.5*(dt/taum)*(g[2][i][j][k][m]-GEQZ);
-		g_post[0][i][j][k][m] = GBARX - (dt/(taum+0.5*dt))*(GBARX-GEQX)- 0.5*(dt/taum)*GEQX;
-		g_post[1][i][j][k][m] = GBARY - (dt/(taum+0.5*dt))*(GBARY-GEQY)- 0.5*(dt/taum)*GEQX;
-		g_post[2][i][j][k][m] = GBARZ - (dt/(taum+0.5*dt))*(GBARZ-GEQZ)- 0.5*(dt/taum)*GEQX;
+		g_post[0][i][j][k][m] = GBARX - (dt/(taum+0.5*dt))*(GBARX-GEQX);
+		g_post[1][i][j][k][m] = GBARY - (dt/(taum+0.5*dt))*(GBARY-GEQY);
+		g_post[2][i][j][k][m] = GBARZ - (dt/(taum+0.5*dt))*(GBARZ-GEQZ);
 	}
 }
 
@@ -305,10 +338,10 @@ void StreamingM()
 }
 
 void BBOS(){
-	int i,j,k,q;
+	int i,j,k;
 	for (i=0;i<=Nx;i++) for(j=0;j<=Ny;j++) for(k=0;k<=Nz;k++){ 
 		
-		if(Inlet[i][j][k] == true){
+		if(Inlety[i][j][k] == true){
 			//plano arriba 
 			f[i][j][k][4]=f_post[i-cx[4]*dt][0][k-cz[4]*dt][4];
 			f[i][j][k][8]=f_post[i-cx[8]*dt][0][k-cz[8]*dt][8];
@@ -317,13 +350,30 @@ void BBOS(){
 			f[i][j][k][18]=f_post[i-cx[18]*dt][0][k-cz[18]*dt][18];
 		}
 
-		if (Outlet[i][j][k] == true){
+		if (Outlety[i][j][k] == true){
 			//plano abajo
 			f[i][j][k][3]=f_post[i-cx[3]*dt][Ny][k-cz[3]*dt][3];
 			f[i][j][k][7]=f_post[i-cx[7]*dt][Ny][k-cz[7]*dt][7];
 			f[i][j][k][11]=f_post[i-cx[11]*dt][Ny][k-cz[11]*dt][11];
 			f[i][j][k][14]=f_post[i-cx[14]*dt][Ny][k-cz[14]*dt][14];
 			f[i][j][k][17]=f_post[i-cx[17]*dt][Ny][k-cz[17]*dt][17];
+		}
+		if(Inletz[i][j][k] == true){
+			//plano adelante
+			f[i][j][k][6]=f_post[i-cx[6]*dt][j-cy[6]*dt][Nz][6];
+			f[i][j][k][10]=f_post[i-cx[10]*dt][j-cy[10]*dt][Nz][10];
+			f[i][j][k][12]=f_post[i-cx[12]*dt][j-cy[12]*dt][Nz][12];
+			f[i][j][k][15]=f_post[i-cx[15]*dt][j-cy[15]*dt][Nz][15];
+			f[i][j][k][17]=f_post[i-cx[17]*dt][j-cy[17]*dt][Nz][17];
+		}
+
+		if (Outletz[i][j][k] == true){
+			//plano atras
+			f[i][j][k][3]=f_post[i-cx[3]*dt][j-cy[3]*dt][0][3];
+			f[i][j][k][7]=f_post[i-cx[7]*dt][j-cy[7]*dt][Nz][7];
+			f[i][j][k][11]=f_post[i-cx[11]*dt][j-cy[11]*dt][Nz][11];
+			f[i][j][k][14]=f_post[i-cx[14]*dt][j-cy[14]*dt][Nz][14];
+			f[i][j][k][17]=f_post[i-cx[17]*dt][j-cy[17]*dt][Nz][17];
 		}
 		
 		if(EsFrontera[i][j][k]==true){
@@ -352,10 +402,10 @@ void BBOS(){
 }
 
 void BCMagnetic(){
-	int i,j,k,m;
+	int i,j,k;
 	for (i=0;i<=Nx;i++) for(j=0;j<=Ny;j++) for(k=0;k<=Nz;k++){
 
-		if(Inlet[i][j][k] == true){
+		if(Inlety[i][j][k] == true){
 			//plano arriba 
 			//g[0][i][j][k][5] = g_post[0][i-cmx[5]*dt][0][k-cmz[5]*dt][5];
 			g[1][i][j][k][5] = g_post[1][i-cmx[5]*dt][0][k-cmz[5]*dt][5];
@@ -363,7 +413,7 @@ void BCMagnetic(){
 
 		}
 
-		if (Outlet[i][j][k] == true){
+		if (Outlety[i][j][k] == true){
 			//plano abajo
 
 			//g[0][i][j][k][6] = g_post[0][i-cmx[6]*dt][Ny][k-cmz[6]*dt][6];
@@ -437,6 +487,7 @@ void Den_Vel_Mag()
 				+g[2][i][j][k][4]+g[2][i][j][k][5]+g[2][i][j][k][6];
 
 				
+
 			if ( j == 0)
 			{
 				Jx[i][j][k] = 0.5*(-3.0*Bz[i][j][k]+4.0*Bz[i][j+1][k]-Bz[i][j+2][k])/dy - 0.5*(-3.0*By[i][j][k]+4.0*By[i][j][k+1]-By[i][j][k+2])/dz ;			
@@ -524,8 +575,8 @@ void divB()
 
 void Data_Output() 
 {
-	int i,j,k,z;
-	z = 4;
+	int i,j,z,k;
+	z = Nz/2;
 	FILE *fp;
 	fp=fopen("x.dat","w+");
 	for(i=0;i<=Nx;i++) fprintf(fp,"%e \n", float(i)/L);
@@ -533,16 +584,28 @@ void Data_Output()
 	fp=fopen("y.dat","w+");
 	for(j=0;j<=Ny;j++) fprintf(fp,"%e \n", float(j)/L);
 	fclose(fp);
+	fp=fopen("z.dat","w+");
+	for(k=0;k<=Nz;k++) fprintf(fp,"%e \n", float(k)/L);
+	fclose(fp);
+
+
 	fp=fopen("vx.dat","w");
-	for(i=0;i<=Nx;i++) {
+	for(i=0;i<=Nx;i++){
 	for (j=0; j<=Ny; j++) fprintf(fp,"%e ",ux[i][j][z]);
 	fprintf(fp,"\n");
 	}
 	fclose(fp);
 	
-	fp=fopen("vy.dat","w");
+	fp=fopen("vy.dat"+,"w");
 	for(i=0;i<=Nx;i++){
 	for (j=0; j<=Ny; j++) fprintf(fp,"%e ",uy[i][j][z]);
+	fprintf(fp,"\n");
+	}
+	fclose(fp);
+
+	fp=fopen("vz.dat","w");
+	for(i=0;i<=Nx;i++){
+	for (j=0; j<=Ny; j++) fprintf(fp,"%e ",uz[i][j][z]);
 	fprintf(fp,"\n");
 	}
 	fclose(fp);
