@@ -25,7 +25,7 @@
 const double Jx0 = 0.0;// Initial conditions density current vector 
 const double Jy0 = 0.0;
 const double Jz0 = 0.0;
-const double Bx0 = -5e1;// Initial conditions magnetic field
+const double Bx0 = -1e-1;// Initial conditions magnetic field
 const double By0 = 0.0;
 const double Bz0 = 0.0;
 
@@ -104,7 +104,7 @@ void divB();
 int main(int argc, char* argv[])
 {
 	int n,M2,N2,O2;
-	double uold,error, tol= 1e-10;
+	double uold,error, tol= 1e-8;
 	M2=Nx/2; N2=Ny/2; O2 = Nz/2;
 	n=0;
 	tau=0.6;
@@ -131,10 +131,10 @@ int main(int argc, char* argv[])
 		//	uz[M2][N2][O2], n); 
 		if (n%500==0)
 			{
-				printf("div B =%e uy=%.10e error=%.10e k=%d\n",Btest[M2][N2][O2],uy[M2][N2][O2],error, n); 	
+				printf("div B =%e uy=%.10e error=%.10e k=%d\n",Btest[M2][N2][O2],uy[M2][N2][O2],error, n); 
+				Data_Output();
 			}	
 	}
-	Data_Output();
 	printf("%d\n", n);
 	printf("Done !\n"); 
 }
@@ -596,7 +596,7 @@ void Data_Output()
 	}
 	fclose(fp);
 	
-	fp=fopen("vy.dat"+,"w");
+	fp=fopen("vy.dat","w");
 	for(i=0;i<=Nx;i++){
 	for (j=0; j<=Ny; j++) fprintf(fp,"%e ",uy[i][j][z]);
 	fprintf(fp,"\n");
