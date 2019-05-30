@@ -3,6 +3,7 @@ import matplotlib
 matplotlib.use("TKAgg")
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from scipy import integrate
 
 x1 = np.loadtxt("x1.dat")
 x2 = np.loadtxt("x2.dat")
@@ -10,6 +11,7 @@ x3 = np.loadtxt("x3.dat")
 x4 = np.loadtxt("x4.dat")
 x5 = np.loadtxt("x5.dat")
 
+x1T = integrate.simps(x1)
 
 
 fig, axs = plt.subplots(2, 2, figsize=(8, 8))
@@ -37,3 +39,18 @@ axs[1, 1].grid(True)
 axs[1, 1].set(aspect='equal')
 plt.savefig("FiniteMode")
 plt.show()
+
+
+plt.plot(x1,x2,"b-")
+plt.xlabel("$x_{1}$")
+plt.ylabel("$x_{2}$")
+plt.title("Modo finito")
+plt.grid(True)
+plt.axis("equal")
+plt.savefig("FiniteMode1")
+plt.show()
+
+print(x1T)
+plt.plot(x1T,"r--")
+plt.show()
+
