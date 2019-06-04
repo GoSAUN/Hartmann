@@ -25,7 +25,7 @@
 const double Jx0 = 0.0;// Initial conditions density current vector 
 const double Jy0 = 0.0;
 const double Jz0 = 0.0;
-const double Bx0 = -1e-1;// Initial conditions magnetic field
+const double Bx0 = -1e-4;// Initial conditions magnetic field
 const double By0 = 0.0;
 const double Bz0 = 0.0;
 
@@ -94,7 +94,6 @@ void BCMagnetic(void);
 
 double u0[Nx1][Ny1][Nz1],v0[Nx1][Ny1][Nz1],w0[Nx1][Ny1][Nz1];
 void Data_Output(void);
-//double Fi(double RHO, double U, double V, double W,int q);
 double af(double RHO, double U, double V, double W, double J,double B,int q);
 double Si(double RHO, double U, double V, double W,int q);
 void divB();
@@ -104,7 +103,7 @@ void divB();
 int main(int argc, char* argv[])
 {
 	int n,M2,N2,O2;
-	double uold,error, tol= 1e-8;
+	double uold,error, tol= 1e-9;
 	M2=Nx/2; N2=Ny/2; O2 = Nz/2;
 	n=0;
 	tau=0.6;
@@ -121,7 +120,7 @@ int main(int argc, char* argv[])
 		Coll_BGK_M();
 		Streaming(); 
 		StreamingM(); 
-		BBOS(); //esto trae problemas con la densidad
+		BBOS(); 
 		BCMagnetic();
 		Den_Vel_Mag();
 		divB();
@@ -161,8 +160,6 @@ void Init_Eq()
 		EsFrontera[i][j][k] = false;
 		EsFrontera[0][j][k] = true;
 		EsFrontera[Nx][j][k] = true;
-		EsFrontera[i][j][0] = true;
-		EsFrontera[i][j][Nz] = true;
 		Inlety[i][Ny][k] = true;
 		Outlety[i][0][k] = true;
 		Inletz[i][j][Nz] = true;
@@ -256,24 +253,6 @@ void Coll_BGKP()
 	}
 }
 
-/*
-void Coll_BGK()
-{
-	int j, i, k, q;
-	double FEQ;
-	double FBAR;
-	for (i=0;i<=Nx1;i++) for(j=0;j<=Ny1;j++) for(k=0;k<=Nz1;k++) for(q=0;q<Q;q++)
-	{
-		FEQ=feq(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q); 
-		FBAR=(1.0+0.5*dt/tau)*f[i][j][k][q] - 0.5*(dt/tau)*FEQ 
-		- 0.5*dt*af(rho[i][j][k], ux[i][j][k], uy[i][j][k], uz[i][j][k], 
-		  Jx[i][j][k],Jy[i][j][k], Jz[i][j][k], Bx[i][j][k], By[i][j][k], Bz[i][j][k], q);
-		f_post[i][j][k][q] = FBAR - (dt/(tau+0.5*dt))*(FBAR-FEQ)+(tau/(tau+0.5*dt))*af(rho[i][j][k], ux[i][j][k], uy[i][j][k], uz[i][j][k], 
-		  Jx[i][j][k],Jy[i][j][k], Jz[i][j][k], Bx[i][j][k], By[i][j][k], Bz[i][j][k], q)
-		+dt*Si(rho[i][j][k],ux[i][j][k],uy[i][j][k],uz[i][j][k],q);
-	}
-}
-*/
 void Coll_BGK()
 {
 	int j, i, k, q;
@@ -330,7 +309,7 @@ void StreamingM()
 	for (i=0;i<Nx1;i++) for(j=0;j<Ny1;j++) for(k=0;k<Nz1;k++) for(m=0;m<M;m++){
 	jd=j-cy[m]; id=i-cx[m]; kd=k-cz[m]; 
 	if(jd>=0 && jd<=Ny && id>=0 && id<=Nx && kd>=0 && kd<=Nz){
-		g[0][i][j][k][m]=g_post[1][id][jd][kd][m]; // streaming
+		g[0][i][j][k][m]=g_post[0][id][jd][kd][m]; // streaming
 		g[1][i][j][k][m]=g_post[1][id][jd][kd][m]; // streaming
 		g[2][i][j][k][m]=g_post[2][id][jd][kd][m]; // streaming
 		}
@@ -378,7 +357,6 @@ void BBOS(){
 		
 		if(EsFrontera[i][j][k]==true){
 			//for (int q = 1; q < Q; q++)
-				//f[i][j][k][q]=f_post[i][j][k][int(q+pow(-1,q))];
 				f[i][j][k][1]=f_post[i][j][k][2];
 				f[i][j][k][2]=f_post[i][j][k][1];
 				f[i][j][k][3]=f_post[i][j][k][4];
@@ -402,51 +380,51 @@ void BBOS(){
 }
 
 void BCMagnetic(){
-	int i,j,k;
+	int i,j,k,m;
 	for (i=0;i<=Nx;i++) for(j=0;j<=Ny;j++) for(k=0;k<=Nz;k++){
 
 		if(Inlety[i][j][k] == true){
 			//plano arriba 
-			//g[0][i][j][k][5] = g_post[0][i-cmx[5]*dt][0][k-cmz[5]*dt][5];
+			g[0][i][j][k][5] = g_post[0][i-cmx[5]*dt][0][k-cmz[5]*dt][5];
 			g[1][i][j][k][5] = g_post[1][i-cmx[5]*dt][0][k-cmz[5]*dt][5];
-			//g[2][i][j][k][5] = g_post[2][i-cmx[5]*dt][0][k-cmz[5]*dt][5];
-
+			g[2][i][j][k][5] = g_post[2][i-cmx[5]*dt][0][k-cmz[5]*dt][5];
 		}
 
 		if (Outlety[i][j][k] == true){
 			//plano abajo
 
-			//g[0][i][j][k][6] = g_post[0][i-cmx[6]*dt][Ny][k-cmz[6]*dt][6];
+			g[0][i][j][k][6] = g_post[0][i-cmx[6]*dt][Ny][k-cmz[6]*dt][6];
 			g[1][i][j][k][6] = g_post[0][i-cmx[6]*dt][Ny][k-cmz[6]*dt][6];
-			//g[2][i][j][k][6] = g_post[0][i-cmx[6]*dt][Ny][k-cmz[6]*dt][6];
+			g[2][i][j][k][6] = g_post[2][i-cmx[6]*dt][Ny][k-cmz[6]*dt][6];
 
 		}
+		
+		if (Inletz[i][j][k] == true){
+			//plano adelante 
+			g[0][i][j][k][4] = g_post[0][i-cmx[4]*dt][j-cmy[4]*dt][Nz][4];
+			g[1][i][j][k][4] = g_post[1][i-cmx[4]*dt][j-cmy[4]*dt][Nz][4];
+			g[2][i][j][k][4] = g_post[2][i-cmx[4]*dt][j-cmy[4]*dt][Nz][4];
+		}
+		
+		if (Outletz[i][j][k] == true){
+			//plano atras
+			g[0][i][j][k][2] = g_post[0][i-cmx[2]*dt][j-cmy[2]*dt][0][2];
+			g[1][i][j][k][2] = g_post[1][i-cmx[2]*dt][j-cmy[2]*dt][0][2];
+			g[2][i][j][k][2] = g_post[2][i-cmx[2]*dt][j-cmy[2]*dt][0][2];
+		}
+		
 		if(EsFrontera[i][j][k]==true){
-
-				g[0][i][j][k][1] = g_post[0][i][j][k][3];
-				g[0][i][j][k][3] = g_post[0][i][j][k][1];
-				g[0][i][j][k][4] = g_post[0][i][j][k][2];
-				g[0][i][j][k][2] = g_post[0][i][j][k][4];
-				g[0][i][j][k][5] = g_post[0][i][j][k][6];
-				g[0][i][j][k][6] = g_post[0][i][j][k][5];
-
-				//g[1][i][j][k][1] = g_post[1][i][j][k][3];
-				//g[1][i][j][k][3] = g_post[1][i][j][k][1];
-				//g[1][i][j][k][4] = g_post[1][i][j][k][2];
-				//g[1][i][j][k][2] = g_post[1][i][j][k][4];
-				//g[1][i][j][k][5] = g_post[1][i][j][k][6];
-				//g[1][i][j][k][6] = g_post[1][i][j][k][5];
-
-				//g[2][i][j][k][1] = g_post[2][i][j][k][3];
-				//g[2][i][j][k][3] = g_post[2][i][j][k][1];
-				//g[2][i][j][k][4] = g_post[2][i][j][k][2];
-				//g[2][i][j][k][2] = g_post[2][i][j][k][4];
-				//g[2][i][j][k][5] = g_post[2][i][j][k][6];
-				//g[2][i][j][k][6] = g_post[2][i][j][k][5];
-						
-		}
+			for(m=0;m<M;m++)
+			{
+				
+					g[0][i][j][k][m] =geqx(0.0,0.0,0.0,0.0,0.0,0.0,m);
+					g[1][i][j][k][m] =geqy(0.0,0.0,0.0,0.0,0.0,0.0,m);
+					g[2][i][j][k][m] =geqz(0.0,0.0,0.0,0.0,0.0,0.0,m);
+			}
+		}							
 	}
 }
+
 
 
 void Den_Vel_Mag()
