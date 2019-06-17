@@ -25,7 +25,7 @@
 const double Jx0 = 0.0;// Initial conditions density current vector 
 const double Jy0 = 0.0;
 const double Jz0 = 0.0;
-const double Bx0 = -1e-4;// Initial conditions magnetic field
+double Bx0;// Initial conditions magnetic field
 const double By0 = 0.0;
 const double Bz0 = 0.0;
 
@@ -104,6 +104,8 @@ int main(int argc, char* argv[])
 {
 	int n,M2,N2,O2;
 	double uold,error, tol= 1e-9;
+	double Bx0;
+	Bx0 = atoi(argv[1]);
 	M2=Nx/2; N2=Ny/2; O2 = Nz/2;
 	n=0;
 	tau=0.6;
@@ -461,16 +463,16 @@ void Den_Vel_Mag()
 			By[i][j][k] = g[1][i][j][k][0]+g[1][i][j][k][1]+g[1][i][j][k][2]+g[1][i][j][k][3]
 			+g[1][i][j][k][4]+g[1][i][j][k][5]+g[1][i][j][k][6];
 				
-			Bx[i][j][k] = g[2][i][j][k][0]+g[2][i][j][k][1]+g[2][i][j][k][2]+g[2][i][j][k][3]
+			Bz[i][j][k] = g[2][i][j][k][0]+g[2][i][j][k][1]+g[2][i][j][k][2]+g[2][i][j][k][3]
 				+g[2][i][j][k][4]+g[2][i][j][k][5]+g[2][i][j][k][6];
 
 				
 
-			if ( j == 0)
+			if ( i == 0)
 			{
 				Jx[i][j][k] = 0.5*(-3.0*Bz[i][j][k]+4.0*Bz[i][j+1][k]-Bz[i][j+2][k])/dy - 0.5*(-3.0*By[i][j][k]+4.0*By[i][j][k+1]-By[i][j][k+2])/dz ;			
 			}
-			else if (j == Ny)
+			else if (i == Nx)
 			{
 				Jx[i][j][k] = 0.5*(3.0*Bz[i][j][k]-4.0*Bz[i][j-1][k]+Bz[i][j-2][k])/dy - 0.5*(3.0*By[i][j][k]-4.0*By[i][j][k-1]+By[i][j][k-2])/dz ;
 			}
@@ -481,11 +483,11 @@ void Den_Vel_Mag()
 
 
 
-			if ( i == 0 )
+			if ( j == 0 )
 			{
 				Jy[i][j][k] = 0.5*(-3.0*Bx[i][j][k]+4.0*Bx[i][j][k+1]-Bx[i][j][k+2])/dz - 0.5*(-3.0*Bz[i][j][k]+4.0*Bz[i+1][j][k]-Bz[i+2][j][k])/dx ;			
 			}
-			else if ( i == Ny )
+			else if ( j == Ny )
 			{
 				Jy[i][j][k] = 0.5*(3.0*Bx[i][j][k]-4.0*Bx[i][j][k-1]+Bx[i][j][k-2])/dz - 0.5*(3.0*Bz[i][j][k]-4.0*Bz[i+1][j][k]+Bz[i-2][j][k])/dx ;			
 			}
@@ -502,7 +504,7 @@ void Den_Vel_Mag()
 				Jz[i][j][k] = 0.5*(-3.0*By[i][j][k]+4.0*By[i+1][j][k]-By[i+2][j][k])/dz - 0.5*(-3.0*Bx[i][j][k]+4.0*Bx[i][j+1][k]-Bx[i][j+2][k])/dx ;			
 			}
 
-			else if ( k == 0 )
+			else if ( k == Nz )
 			{
 				Jz[i][j][k] = 0.5*(3.0*By[i][j][k]-4.0*By[i-1][j][k]+By[i-2][j][k])/dz - 0.5*(3.0*Bx[i][j][k]-4.0*Bx[i][j-1][k]+Bx[i][j-2][k])/dx ;			
 			}
